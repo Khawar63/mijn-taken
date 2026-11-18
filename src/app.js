@@ -47,16 +47,21 @@ function migrate() {
   for (const t of state.tasks) if (!t.listId || !state.lists.some((l) => l.id === t.listId)) t.listId = state.lists[0].id;
   save();
 }
-function save() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+function save() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  if (window.onLocalSave) window.onLocalSave(); // synchronisatie (sync.js)
+}
+// Onthoud verwijderde taken/lijsten, zodat ze bij synchroniseren niet terugkomen.
+function tombstone(id) { (state.deleted ||= {})[id] = Date.now(); }
 
 function demoTasks() {
   const d = (n) => { const x = new Date(); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
   const now = Date.now();
   return [
-    { id: uid(), title: 'Welkom! Klik op een taak om details te openen', status: 'todo', prio: 'Normaal', due: '', labels: ['uitleg'], notes: 'Hier kun je notities kwijt.\n\nTip: sleep kaarten tussen kolommen in de Bord-weergave.', subtasks: [{ id: uid(), text: 'Probeer een subtaak af te vinken', done: false }, { id: uid(), text: 'Voeg een label toe', done: true }], created: now },
-    { id: uid(), title: 'Voorbeeld: boodschappen doen', status: 'doing', prio: 'Hoog', due: d(0), labels: ['privé'], listId: 'prive', notes: '', subtasks: [], created: now - 1000 },
-    { id: uid(), title: 'Voorbeeld: verslag afronden', status: 'todo', prio: 'Urgent', due: d(-1), labels: ['werk'], listId: 'werk', notes: '', subtasks: [], created: now - 2000 },
-    { id: uid(), title: 'Voorbeeld: app uitproberen', status: 'done', prio: 'Laag', due: '', labels: [], notes: '', subtasks: [], created: now - 3000 },
+    { id: uid(), title: 'Welkom! Klik op een taak om details te openen', status: 'todo', prio: 'Normaal', due: '', labels: ['uitleg'], notes: 'Hier kun je notities kwijt.\n\nTip: sleep kaarten tussen kolommen in de Bord-weergave.', subtasks: [{ id: uid(), text: 'Probeer een subtaak af te vinken', done: false }, { id: uid(), text: 'Voeg een label toe', done: true }], demo: true, created: now },
+    { id: uid(), title: 'Voorbeeld: boodschappen doen', status: 'doing', prio: 'Hoog', due: d(0), labels: ['privé'], listId: 'prive', notes: '', subtasks: [], demo: true, created: now - 1000 },
+    { id: uid(), title: 'Voorbeeld: verslag afronden', status: 'todo', prio: 'Urgent', due: d(-1), labels: ['werk'], listId: 'werk', notes: '', subtasks: [], demo: true, created: now - 2000 },
+    { id: uid(), title: 'Voorbeeld: app uitproberen', status: 'done', prio: 'Laag', due: '', labels: [], notes: '', subtasks: [], demo: true, created: now - 3000 },
   ];
 }
 
@@ -270,13 +275,15 @@ function addList() {
 function renameList(l) {
   const v = prompt('Nieuwe naam:', `${l.icon} ${l.name}`);
   if (!v || !v.trim()) return;
-  Object.assign(l, splitIcon(v, l.icon)); save(); render();
+  Object.assign(l, splitIcon(v, l.icon), { updated: Date.now() }); save(); render();
 }
 function deleteList(l) {
   const n = state.tasks.filter((t) => t.listId === l.id).length;
   const target = state.lists.find((x) => x.id !== l.id);
   if (!confirm(`Lijst "${l.name}" verwijderen?` + (n ? ` De ${n} taken gaan naar "${target.name}".` : ''))) return;
   state.tasks.forEach((t) => { if (t.listId === l.id) t.listId = target.id; });
+  state.tasks.forEach((t) => { if (t.listId === target.id) t.updated = Date.now(); });
+  tombstone(l.id);
   state.lists = state.lists.filter((x) => x.id !== l.id);
   if (currentList === l.id) currentList = 'all';
   save(); render();
@@ -356,7 +363,7 @@ function init() {
   $('#closePanel').onclick = closePanel;
   $('#backdrop').onclick = closePanel;
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openId) closePanel(); });
-  $('#deleteTask').onclick = () => { if (confirm('Deze taak verwijderen?')) { state.tasks = state.tasks.filter((t) => t.id !== openId); save(); closePanel(); render(); } };
+  $('#deleteTask').onclick = () => { if (confirm('Deze taak verwijderen?')) { tombstone(openId); state.tasks = state.tasks.filter((t) => t.id !== openId); save(); closePanel(); render(); } };
 
   $('#pTitle').addEventListener('input', (e) => updateTask(openId, { title: e.target.value }));
   $('#pList').addEventListener('change', (e) => updateTask(openId, { listId: e.target.value }));
