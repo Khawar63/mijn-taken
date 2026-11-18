@@ -3,7 +3,7 @@
 'use strict';
 
 const SUPABASE_URL = 'https://loalyqqjotkfqpiquflc.supabase.co';
-const SUPABASE_KEY = '';
+const SUPABASE_KEY = 'sb_publishable_s2FCki8DhszsfiEc6a0x4A_6jNZ6qt-';
 
 (() => {
   const btn = document.getElementById('syncBtn');
