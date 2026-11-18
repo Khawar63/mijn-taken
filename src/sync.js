@@ -2,7 +2,7 @@
 // Vul hieronder je eigen Project URL en anon/publishable key in. Leeg = synchronisatie uit.
 'use strict';
 
-const SUPABASE_URL = '';
+const SUPABASE_URL = 'https://loalyqqjotkfqpiquflc.supabase.co';
 const SUPABASE_KEY = '';
 
 (() => {
