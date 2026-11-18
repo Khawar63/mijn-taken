@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mijn Taken</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <button id="menuBtn" class="ghost" title="Lijsten tonen">☰</button>
+    <h1>📋 Mijn Taken</h1>
+    <div class="view-switch" role="tablist">
+      <button data-view="list" class="active">☰ Lijst</button>
+      <button data-view="board">▦ Bord</button>
+      <button data-view="calendar">📅 Kalender</button>
+    </div>
+    <div class="spacer"></div>
+    <button id="exportBtn" class="ghost" title="Back-up downloaden">⬇<span class="lbl"> Export</span></button>
+    <label class="ghost btn-like" title="Back-up terugzetten">⬆<span class="lbl"> Import</span><input id="importInput" type="file" accept=".json" hidden></label>
+    <button id="themeBtn" class="ghost" title="Donkere / lichte modus">🌙</button>
+  </header>
+
+  <div class="layout">
+  <nav id="sidebar" class="sidebar">
+    <div class="side-title">Lijsten</div>
+    <ul id="listNav"></ul>
+    <button id="addList" class="ghost add-list">+ Nieuwe lijst</button>
+  </nav>
+  <div class="content">
+  <h2 id="listHeading" class="list-heading"></h2>
+  <section class="toolbar">
+    <form id="quickAdd" autocomplete="off">
+      <input id="quickTitle" placeholder="+ Nieuwe taak… (Enter)" required>
+      <button type="submit">Toevoegen</button>
+    </form>
+    <div class="filters">
+      <input id="search" type="search" placeholder="🔍 Zoeken…">
+      <select id="fStatus"><option value="">Alle statussen</option></select>
+      <select id="fPrio"><option value="">Alle prioriteiten</option></select>
+      <select id="fLabel"><option value="">Alle labels</option></select>
+      <select id="sortBy">
+        <option value="created">Sorteer: nieuwste</option>
+        <option value="due">Sorteer: deadline</option>
+        <option value="prio">Sorteer: prioriteit</option>
+        <option value="title">Sorteer: titel</option>
+      </select>
+      <label class="chk"><input id="hideDone" type="checkbox"> Verberg afgerond</label>
+    </div>
+  </section>
+
+  <main id="main"></main>
+  </div>
+  </div>
+
+  <aside id="panel" class="panel" hidden>
+    <div class="panel-head">
+      <button id="closePanel" class="ghost" title="Sluiten (Esc)">✕</button>
+      <div class="spacer"></div>
+      <button id="deleteTask" class="danger">🗑 Verwijderen</button>
+    </div>
+    <input id="pTitle" class="p-title" placeholder="Titel">
+    <div class="props">
+      <label>Lijst</label><select id="pList"></select>
+      <label>Status</label><select id="pStatus"></select>
+      <label>Prioriteit</label><select id="pPrio"></select>
+      <label>Deadline</label><input id="pDue" type="date">
+      <label>Labels</label>
+      <div>
+        <div id="pLabels" class="labels"></div>
+        <input id="pLabelInput" placeholder="Label toevoegen + Enter" list="labelList">
+        <datalist id="labelList"></datalist>
+      </div>
+    </div>
+    <h3>Subtaken <span id="subCount" class="muted"></span></h3>
+    <div class="progress"><div id="subBar"></div></div>
+    <ul id="pSubs" class="subs"></ul>
+    <form id="subAdd" autocomplete="off"><input id="subInput" placeholder="+ Subtaak toevoegen"></form>
+    <h3>Notities</h3>
+    <textarea id="pNotes" placeholder="Schrijf hier notities, links, ideeën…"></textarea>
+    <p class="muted small" id="pMeta"></p>
+  </aside>
+  <div id="backdrop" hidden></div>
+  <div id="sideBackdrop" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
