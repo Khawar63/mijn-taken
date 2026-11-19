@@ -47,6 +47,16 @@ const SUPABASE_KEY = 'sb_publishable_s2FCki8DhszsfiEc6a0x4A_6jNZ6qt-';
     });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).msg || 'Versturen mislukt (' + r.status + ')');
   }
+  async function verifyCode(email, code) {
+    let last = '';
+    for (const type of ['email', 'magiclink']) {
+      const r = await api('/auth/v1/verify', { method: 'POST', body: JSON.stringify({ type, email, token: code }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.access_token) { setSession(j); return; }
+      last = j.msg || j.error_description || j.message || ('fout ' + r.status);
+    }
+    throw new Error(/expired|invalid/i.test(last) ? 'de code is verlopen of klopt niet. Vraag een nieuwe aan.' : last);
+  }
   // Na klikken op de inloglink staan de tokens in het adres (#access_token=...).
   function readLinkFromUrl() {
     const h = new URLSearchParams(location.hash.slice(1));
@@ -134,8 +144,12 @@ const SUPABASE_KEY = 'sb_publishable_s2FCki8DhszsfiEc6a0x4A_6jNZ6qt-';
     }
     const email = (prompt('Vul je e-mailadres in. Je krijgt een inloglink (geen wachtwoord nodig):') || '').trim();
     if (!email) return;
-    try { await sendLink(email); alert('Kijk in je mail (ook bij spam) en klik op de inloglink. Open de link op elk apparaat waarop je je taken wilt zien.'); }
-    catch (e) { alert('Dat lukte niet: ' + e.message); }
+    try { await sendLink(email); }
+    catch (e) { alert('Dat lukte niet: ' + e.message); return; }
+    const code = (prompt('Er is een mail onderweg (kijk ook bij spam).\n\nStaat er een code van 6 cijfers in? Vul die hier in.\nStaat er alleen een link? Klik dan op OK en open de link in dezelfde browser als deze app.') || '').replace(/\s/g, '');
+    if (!code) return;
+    try { await verifyCode(email, code); updateButton(); await sync(); alert('Ingelogd! Je taken worden nu gesynchroniseerd.'); }
+    catch (e) { alert('Inloggen met de code lukte niet: ' + e.message); }
   };
 
   // ---------- Start ----------
