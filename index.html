@@ -181,6 +181,7 @@ main { padding: 0 20px 40px; }
       <button data-view="calendar">📅 Kalender</button>
     </div>
     <div class="spacer"></div>
+    <button id="icsBtn" class="ghost" title="Taken met deadline naar je agenda (Google Agenda, Outlook, iPhone)">📅<span class="lbl"> Agenda</span></button>
     <button id="exportBtn" class="ghost" title="Back-up downloaden">⬇<span class="lbl"> Export</span></button>
     <label class="ghost btn-like" title="Back-up terugzetten">⬆<span class="lbl"> Import</span><input id="importInput" type="file" accept=".json" hidden></label>
     <button id="syncBtn" class="ghost">☁ Inloggen</button>
@@ -588,6 +589,44 @@ function renderSubs(t) {
   }
 }
 
+// ---------- Agenda-export (.ics) ----------
+// Alle open taken met een deadline als hele-dag-afspraken. Vaste UID per taak,
+// zodat opnieuw importeren in Google Agenda bestaande afspraken bijwerkt.
+function icsEscape(v) { return String(v).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+function icsFold(line) { // regels max. 75 bytes (iCalendar-regel)
+  const enc = new TextEncoder(); let out = '', cur = '', n = 0;
+  for (const ch of line) {
+    const b = enc.encode(ch).length;
+    if (n + b > 73) { out += cur + '\r\n '; cur = ''; n = 1; }
+    cur += ch; n += b;
+  }
+  return out + cur;
+}
+function exportIcs() {
+  const tasks = state.tasks.filter((t) => t.due && t.status !== 'done');
+  if (!tasks.length) { alert('Er zijn geen open taken met een deadline om naar je agenda te sturen.'); return; }
+  const d8 = (s) => s.replace(/-/g, '');
+  const next = (s) => { const [y, m, d] = s.split('-').map(Number); return ymd(new Date(y, m - 1, d + 1)); };
+  const now = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const listName = (id) => { const l = state.lists.find((x) => x.id === id); return l ? l.name : ''; };
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Mijn Taken//NL', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Mijn Taken'];
+  for (const t of tasks) {
+    const info = [`Prioriteit: ${t.prio}`, `Lijst: ${listName(t.listId)}`];
+    if (t.labels.length) info.push('Labels: ' + t.labels.join(', '));
+    if (t.subtasks.length) info.push('Subtaken:\n' + t.subtasks.map((s) => (s.done ? '☑ ' : '☐ ') + s.text).join('\n'));
+    if (t.notes.trim()) info.push('\n' + t.notes.trim());
+    info.push('\n' + location.origin + location.pathname);
+    lines.push('BEGIN:VEVENT', `UID:${t.id}@mijn-taken`, `DTSTAMP:${now}`,
+      `DTSTART;VALUE=DATE:${d8(t.due)}`, `DTEND;VALUE=DATE:${d8(next(t.due))}`,
+      'SUMMARY:' + icsEscape((t.prio === 'Urgent' ? '❗ ' : '') + t.title),
+      'DESCRIPTION:' + icsEscape(info.join('\n')), 'TRANSP:TRANSPARENT', 'END:VEVENT');
+  }
+  lines.push('END:VCALENDAR');
+  const blob = new Blob([lines.map(icsFold).join('\r\n') + '\r\n'], { type: 'text/calendar;charset=utf-8' });
+  const a = el('a', { href: URL.createObjectURL(blob), download: 'mijn-taken.ics' });
+  document.body.append(a); a.click(); a.remove();
+}
+
 // ---------- Thema ----------
 function applyTheme(th) {
   document.documentElement.dataset.theme = th;
@@ -636,6 +675,7 @@ function init() {
     const t = getTask(openId); t.subtasks.push({ id: uid(), text: v, done: false }); updateTask(openId, {}); renderSubs(t); $('#subInput').value = '';
   };
 
+  $('#icsBtn').onclick = exportIcs;
   $('#exportBtn').onclick = () => {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const a = el('a', { href: URL.createObjectURL(blob), download: `taken-backup-${todayStr()}.json` });
